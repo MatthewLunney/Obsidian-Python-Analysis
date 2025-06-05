@@ -15,7 +15,10 @@ def select_sector_and_dates():
     root.geometry("350x210")
     root.resizable(False, False)
 
-    xl = pd.ExcelFile(os.path.join('data', 'Company Names.xlsx'))
+    # Use absolute path to data folder relative to this script's parent directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, 'data')
+    xl = pd.ExcelFile(os.path.join(data_dir, 'Company Names.xlsx'))
     sheet_names = xl.sheet_names
 
     selected = tk.StringVar()
@@ -67,15 +70,19 @@ def select_sector_and_dates():
     root.mainloop()
     return getattr(root, 'selected_sector', None), getattr(root, 'start_date', None), getattr(root, 'end_date', None)
 
+# Use absolute paths for data files
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+data_dir = os.path.join(base_dir, 'data')
+
 sector, start_date, end_date = select_sector_and_dates()
 if sector is None or start_date is None or end_date is None:
     raise SystemExit("No sector or date range selected. Exiting.")
 
 # Set file paths based on sector
-excel_file_path = os.path.join('data', f"{sector}.xlsx")
+excel_file_path = os.path.join(data_dir, f"{sector}.xlsx")
 
 # Load the company names data
-df = pd.read_excel(os.path.join('data', 'Company Names.xlsx'), sheet_name=sector, engine='openpyxl')  # Use selected sector as sheet
+df = pd.read_excel(os.path.join(data_dir, 'Company Names.xlsx'), sheet_name=sector, engine='openpyxl')  # Use selected sector as sheet
 
 # Initialize columns in the DataFrame
 df['P/E'] = np.nan
@@ -108,9 +115,6 @@ for index, row in df.iterrows():
         ticker_data['Period'] = ticker_data['Date'].dt.to_period('M')
         ticker_data = ticker_data[(ticker_data['Period'] >= start_period) & (ticker_data['Period'] <= end_period)]
         ticker_data = ticker_data.sort_values(by='Date', ascending=False)
-
-        print(f"\nDataFrame for {ticker} (filtered):")
-        print(ticker_data)
 
         if ticker_data.empty:
             continue
@@ -149,8 +153,6 @@ for index, row in df.iterrows():
     except Exception as e:
         print(f"Error processing ticker {ticker}: {e}")
 
-print(df)
-
 # Format the date range string for the plot titles
 start_year, start_month = int(start_date[:4]), int(start_date[5:7])
 end_year, end_month = int(end_date[:4]), int(end_date[5:7])
@@ -158,13 +160,13 @@ start_str = f"{calendar.month_name[start_month]} {start_year}"
 end_str = f"{calendar.month_name[end_month]} {end_year}"
 date_range_str = f"{start_str} - {end_str}"
 
-yaxis = df['Z-score P/E'].max() if (df['Z-score P/E'].max())> abs(df['Z-score P/E'].min()) else abs(df['Z-score P/E'].min())
+yaxis = df['Z-score P/E'].max() if (df['Z-score P/E'].max()) > abs(df['Z-score P/E'].min()) else abs(df['Z-score P/E'].min())
 
 # Calculate axis limits for first scatter plot
 x_min = 0
 x_max = df['D/Y'].max() + 0.1
 y_max = yaxis + 0.1
-y_min = yaxis*-1 - 0.1
+y_min = yaxis * -1 - 0.1
 x_center = (x_min + x_max) / 2
 
 plt.figure(figsize=(12, 8))

@@ -10,12 +10,15 @@ import os
 
 # --- POPUP WINDOW FOR SECTOR SELECTION AND DATE RANGE ---
 def select_sector_and_dates():
+    # Use absolute path to data folder relative to this script's parent directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, 'data')
     root = tk.Tk()
     root.title("Select Sector and Date Range")
     root.geometry("350x220")
     root.resizable(False, False)
 
-    xl = pd.ExcelFile(os.path.join('data', 'Company Names.xlsx'))
+    xl = pd.ExcelFile(os.path.join(data_dir, 'Company Names.xlsx'))
     sheet_names = xl.sheet_names
 
     selected = tk.StringVar()
@@ -71,13 +74,17 @@ def select_sector_and_dates():
         getattr(root, 'end_date', None)
     )
 
+# Use absolute paths for data files
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+data_dir = os.path.join(base_dir, 'data')
+
 sector, start_date, end_date = select_sector_and_dates()
 if sector is None or start_date is None or end_date is None:
     raise SystemExit("No sector or date range selected. Exiting.")
 
 # Update all file paths to use the 'data' folder
-excel_file_path = os.path.join('data', f"{sector}.xlsx")
-df = pd.read_excel(os.path.join('data', 'Company Names.xlsx'), sheet_name=sector, engine='openpyxl')
+excel_file_path = os.path.join(data_dir, f"{sector}.xlsx")
+df = pd.read_excel(os.path.join(data_dir, 'Company Names.xlsx'), sheet_name=sector, engine='openpyxl')
 tickers = df['Ticker']
 matrix = pd.DataFrame(index=tickers, columns=tickers)
 
@@ -128,8 +135,6 @@ for ticker1 in tickers:
                 df1['Period'] = df1['Date'].dt.to_period('M')
                 df1 = df1[(df1['Period'] >= start_period) & (df1['Period'] <= end_period)]
                 df1.set_index('Date', inplace=True)
-                print(f"\nDataFrame for {ticker1} (filtered):")
-                print(df1)
 
                 df2 = df2.rename(columns={'Close Adj. Ex. Div.': 'Last Price', 'EPS Basic - TTM': 'EPS',
                                            'Dividend Yield-TTM': 'D/Y', 'Dates': 'Date'})
@@ -139,14 +144,10 @@ for ticker1 in tickers:
                 df2['Period'] = df2['Date'].dt.to_period('M')
                 df2 = df2[(df2['Period'] >= start_period) & (df2['Period'] <= end_period)]
                 df2.set_index('Date', inplace=True)
-                print(f"\nDataFrame for {ticker2} (filtered):")
-                print(df2)
 
                 # Align on index and fill NaN with 0.01
                 df_div = df1[['P/E']].div(df2[['P/E']])
                 df_div = df_div.fillna(0.01)
-                print(f"\nDivision DataFrame {ticker1} / {ticker2}:")
-                print(df_div)
                 if df_div.empty:
                     matrix.loc[ticker1, ticker2] = np.nan
                     continue
@@ -166,8 +167,6 @@ for ticker1 in tickers:
                 df_self = df_self[df_self['Date'].notna()]
                 df_self['Period'] = df_self['Date'].dt.to_period('M')
                 df_self = df_self[(df_self['Period'] >= start_period) & (df_self['Period'] <= end_period)]
-                print(f"\nDataFrame for {ticker1} (self, filtered):")
-                print(df_self)
                 if df_self.empty:
                     matrix.loc[ticker1, ticker2] = np.nan
                     continue
@@ -231,6 +230,3 @@ plt.tight_layout()
 plt.show()
 
 print(matrix)
-
-
-# hello
