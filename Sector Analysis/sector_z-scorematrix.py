@@ -23,6 +23,9 @@ def produce_zscore_matrix(sector, start_date, end_date):
     end_str = f"{calendar.month_name[end_month]} {end_year}"
     date_range_str = f"{start_str} - {end_str}"
 
+    # Store self z-scores for sorting
+    self_zscores = {}
+
     for ticker1 in tickers:
         for ticker2 in tickers:
             try:
@@ -78,27 +81,15 @@ def produce_zscore_matrix(sector, start_date, end_date):
                     current_PE = df_self['P/E'].iloc[-1]
                     Z = round((current_PE - PE_mean) / PE_std, 2) if PE_std != 0 else np.nan
                     matrix.loc[ticker1, ticker2] = Z
+                    self_zscores[ticker1] = Z
             except Exception as e:
                 matrix.loc[ticker1, ticker2] = np.nan
+                if ticker1 == ticker2:
+                    self_zscores[ticker1] = np.nan
 
-    def count_positives(series):
-        return (series > 0).sum()
-    def count_negatives(series):
-        return (series < 0).sum()
-
-    row_positive_counts = matrix.astype(float).apply(count_positives, axis=1)
-    row_negative_counts = matrix.astype(float).apply(count_negatives, axis=1)
-    row_sums = matrix.astype(float).sum(axis=1)
-
-    sorted_rows = sorted(
-        matrix.index,
-        key=lambda x: (
-            -row_positive_counts[x],
-            -row_negative_counts[x],
-            -row_sums[x]
-        )
-    )
-    matrix = matrix.loc[sorted_rows, sorted_rows]
+    # Sort by self z-score descending
+    sorted_tickers = sorted(self_zscores, key=lambda x: (self_zscores[x] if self_zscores[x] is not None else float('-inf')), reverse=True)
+    matrix = matrix.loc[sorted_tickers, sorted_tickers]
 
     plt.figure(figsize=(10, 8))
     norm = TwoSlopeNorm(vmin=matrix.astype(float).min().min(), vcenter=0, vmax=matrix.astype(float).max().max())
